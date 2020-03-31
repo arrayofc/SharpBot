@@ -21,19 +21,7 @@ namespace SharpBot.Services {
             return await response.Content.ReadAsStreamAsync();
         }
 
-        public async Task<Stream> getRandomMeme() {
-            var response = await _http.GetAsync("https://some-random-api.ml/img/dog");
-            if (response == null || !response.IsSuccessStatusCode) return null;
-
-            string imageUrl = JsonValue.Parse(await response.Content.ReadAsStringAsync())["link"];
-
-            var image = await _http.GetAsync(imageUrl);
-            if (image == null || !image.IsSuccessStatusCode) return null;
-
-            return await image.Content.ReadAsStreamAsync();
-        }
-
-        public async Task<Stream> GetRandomDogPicture() {
+        public async Task<Stream> GetDogPictureAsync() {
             var response = await _http.GetAsync("https://dog.ceo/api/breeds/image/random");
             if (response == null || !response.IsSuccessStatusCode) return null;
 
