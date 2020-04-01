@@ -8,7 +8,7 @@ namespace SharpBot.Command {
 
         public string Invoke { get; }
         public bool GuildOnly { get; set; }
-        public GuildPermission Permission { get; set; }
+        public Nullable<GuildPermission> Permission { get; set; }
 
         public List<string> Aliases { get; set; }
 
@@ -16,6 +16,7 @@ namespace SharpBot.Command {
             this.Invoke = invoke;
             this.Aliases = new List<string>();
             this.GuildOnly = false;
+            this.Permission = null;
 
             CommandManager.Commands.Add(this);
         }
@@ -43,7 +44,7 @@ namespace SharpBot.Command {
             return this.GuildOnly;
         }
 
-        public GuildPermission GetPermission() {
+        public Nullable<GuildPermission> GetPermission() {
             return this.Permission;
         }
 
@@ -51,6 +52,6 @@ namespace SharpBot.Command {
             return this.Aliases;
         }
 
-        public abstract void Execute(IUser user, SocketUserMessage channel, string[] args);
+        public abstract void Execute(IUser user, SocketUserMessage message, string[] args);
     }
 }

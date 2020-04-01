@@ -55,20 +55,21 @@ namespace SharpBot.Command {
                 SocketGuildUser user = channel.Guild.GetUser(rawMessage.Author.Id);
                 if (user == null) return;
 
-                if (!(user.GuildPermissions.ToList().Contains(command.GetPermission()))) {
-                    await message.Channel.SendMessageAsync($"You must have the {command.GetPermission()} permission to execute this command.").ContinueWith(async msg => {
-                        await Task.Delay(3 * 1000);
+                GuildPermission permission = command.GetPermission().Value;
+
+                if (!(user.GuildPermissions.ToList().Contains(permission))) {
+                    await message.Channel.SendMessageAsync($"You must have the `{command.GetPermission()}` permission to execute this command.").ContinueWith(async msg => {
+                        await Task.Delay(5 * 1000);
                         await msg.Result.DeleteAsync();
                     });
                     return;
                 }
             }
 
-
             await Task.Run(() => {
-                Console.WriteLine($"Command \"{String.Join(" ", args)}\" executed by {rawMessage.Author.Username}#{rawMessage.Author.Discriminator} in #{rawMessage.Channel.Name}.");
+                Console.WriteLine($"Command \"{String.Join(" ", args)}\" executed by {rawMessage.Author.Username}#{rawMessage.Author.Discriminator} ({rawMessage.Author.Id}) in #{rawMessage.Channel.Name} ({rawMessage.Channel.Id}).");
 
-                command.Execute(rawMessage.Author, (SocketUserMessage)rawMessage, args);
+                command.Execute(rawMessage.Author, message, args);
             });
         }
     }

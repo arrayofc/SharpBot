@@ -21,6 +21,11 @@ namespace SharpBot.Command {
         }
 
         private void RegisterCommands() {
+            // Moderation
+            new KickCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.KickMembers);
+            new VoiceKickCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.KickMembers).PutAliases((new string[] { "vkick" }).ToList());
+
+            // Misc Commands
             new CatCommand(_services).PutAliases((new string[] { "kitten" }).ToList());
             new DogCommand(_services).PutAliases((new string[] { "doggy" }).ToList());
         }

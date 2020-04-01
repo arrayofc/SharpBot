@@ -68,6 +68,10 @@ namespace SharpBot {
             return instance;
         }
 
+        public static char GetCommandPrefix() {
+            return getInstance()._configManager.getConfig().BotPrefix;
+        }
+
         private ServiceProvider ConfigureServices() => new ServiceCollection()
                 .AddSingleton<DiscordSocketClient>()
                 .AddSingleton<CommandManager>()
