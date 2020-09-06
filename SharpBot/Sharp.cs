@@ -8,8 +8,10 @@ using SharpBot.Database;
 using SharpBot.Punishments;
 using SharpBot.Services;
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using SharpBot.Modules;
 
 namespace SharpBot {
     public class Sharp {
@@ -18,10 +20,10 @@ namespace SharpBot {
         public DiscordSocketClient Client { get; private set; }
 
         public ConfigManager ConfigManager { get; private set; }
-        
+
         public Mongo Mongo { get; private set; }
 
-        public GuildCache GuildCache { get; set; } 
+        public GuildCache GuildCache { get; set; }
 
         /// <summary>
         /// Sets up the bot and all of it necessary classes.
@@ -58,9 +60,9 @@ namespace SharpBot {
             await Client.SetStatusAsync(UserStatus.Online);
             await Client.SetActivityAsync(new Game("@Sharp", ActivityType.Listening));
             await Client.StartAsync();
-            
-            Client.Ready += ReadyAsync;
 
+            Client.Ready += ReadyAsync;
+            
             await Task.Delay(-1);
         }
 
@@ -97,8 +99,21 @@ namespace SharpBot {
         /// </summary>
         /// <returns>The command prefix, '!' as default.</returns>
         public static char GetCommandPrefix(SocketUserMessage message) {
-            return message.Channel is IPrivateChannel ? GetInstance().ConfigManager.GetConfig().BotPrefix :
-                GuildCache.GetGuild(((SocketGuildChannel) message.Channel).Guild.Id).Settings.CommandPrefix;
+            return message.Channel is IPrivateChannel
+                ? GetInstance().ConfigManager.GetConfig().BotPrefix
+                : char.Parse(
+                    GuildCache.GetGuild(((SocketGuildChannel) message.Channel).Guild.Id).Settings.CommandPrefix);
+        }
+
+        /// <summary>
+        /// Check if this bots self user has required permissions.
+        /// </summary>
+        /// <param name="guild">The guild to check permissions for.</param>
+        /// <param name="perms">The permissions to check.</param>
+        /// <returns>True if bot has access to all.</returns>
+        public static bool CheckPermissions(SocketGuild guild, params GuildPermission[] perms) {
+            var botPerms = guild.GetUser(_instance.Client.CurrentUser.Id).GuildPermissions.ToList();
+            return perms.ToList().TrueForAll(permission => botPerms.Contains(permission));
         }
 
         /// <summary>
@@ -108,17 +123,20 @@ namespace SharpBot {
         private static ServiceProvider ConfigureServices() => new ServiceCollection()
             // Discord
             .AddSingleton<DiscordSocketClient>()
-            
+
             // Commands
             .AddSingleton<CommandManager>()
             .AddSingleton<CommandHandlingService>()
-            
+
             // Web & Http
             .AddSingleton<HttpClient>()
             .AddSingleton<ImageWebService>()
-            
+
             // Punishments
             .AddSingleton<PunishmentManager>()
+            
+            // Modules
+            .AddSingleton<ModuleManager>()
             
             .BuildServiceProvider();
     }

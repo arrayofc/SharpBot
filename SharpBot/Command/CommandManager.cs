@@ -4,8 +4,10 @@ using System.Linq;
 using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
-using SharpBot.Command.commands;
+using SharpBot.Command.commands.help;
 using SharpBot.Command.commands.management;
+using SharpBot.Command.commands.moderation;
+using SharpBot.Command.commands.utility;
 
 namespace SharpBot.Command {
     public class CommandManager {
@@ -26,18 +28,33 @@ namespace SharpBot.Command {
         /// </summary>
         private void RegisterCommands() {
             // Management
-            new SetModLogChannel().SetGuildOnly().SetPermission(Discord.GuildPermission.ManageGuild);
-            new ModLogCommand().SetGuildOnly().SetPermission(Discord.GuildPermission.ManageGuild);
-            new SetCommandPrefixCommand().SetGuildOnly().PutAliases(new[] { "setprefix", "commandprefix" }.ToList()).SetPermission(Discord.GuildPermission.ManageGuild);
+            new SetModLogChannel().SetGuildOnly().SetPermission(Discord.GuildPermission.ManageGuild)
+                .SetDescription("Sets the moderation log channel where punishments are moderation events are sent.");
+            new ModLogCommand().SetGuildOnly().SetPermission(Discord.GuildPermission.ManageGuild)
+                .SetDescription("Checks where the moderation log is currently set.");
+            new SetCommandPrefixCommand().SetGuildOnly().PutAliases(new[] { "setprefix", "commandprefix" }.ToList()).SetPermission(Discord.GuildPermission.ManageGuild)
+                .SetDescription("Sets the command prefix this bot is meant to listen for.");
 
             // Moderation
-            new HistoryCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.BanMembers);
-            new KickCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.KickMembers);
-            new VoiceKickCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.KickMembers).PutAliases(new[] { "vkick" }.ToList());
+            new HistoryCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.BanMembers)
+                .SetDescription("Retrieve punishment history of a user.");
+            new KickCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.KickMembers)
+                .SetDescription("Kick members from the guild.");
+            new VoiceKickCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.KickMembers).PutAliases(new[] { "vkick" }.ToList())
+                .SetDescription("Kick members from voice channels.");
+            new WarnCommand(_services).SetGuildOnly().SetPermission(Discord.GuildPermission.KickMembers).PutAliases(new[] { "warning" }.ToList())
+                .SetDescription("Warn members in the guild.");
 
             // Misc Commands
-            new CatCommand(_services).PutAliases(new[] { "kitten" }.ToList());
-            new DogCommand(_services).PutAliases(new[] { "doggy" }.ToList());
+            new CatCommand(_services).PutAliases(new[] { "kitten" }.ToList())
+               .SetDescription("Sends a picture of a cat.");
+            new DogCommand(_services).PutAliases(new[] { "doggy" }.ToList())
+                .SetDescription("Sends a picture of a dog.");
+
+            // Help Commands
+            new HelpCommand(_services).PutAliases(new[] { "commandlist" }.ToList())
+                .SetDescription("Look up help about commands and command categories.");
+
         }
 
         /// <summary>

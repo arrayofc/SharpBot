@@ -3,6 +3,7 @@
         Warn,
         Kick,
         Voice_Kick,
-        Ban
+        Ban,
+        Mute
     }
 }

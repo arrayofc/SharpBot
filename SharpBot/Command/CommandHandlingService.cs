@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Threading.Tasks;
 using SharpBot.Cache;
+using SharpBot.Utility;
 
 namespace SharpBot.Command {
     internal class CommandHandlingService {
@@ -32,7 +33,7 @@ namespace SharpBot.Command {
 
             var argPos = 0;
 
-            var prefix = rawMessage.Channel is IPrivateChannel ? '!' : GuildCache.GetGuild(((SocketGuildChannel) rawMessage.Channel).Guild.Id).Settings.CommandPrefix;
+            var prefix = rawMessage.Channel is IPrivateChannel ? "!" : GuildCache.GetGuild(((SocketGuildChannel) rawMessage.Channel).Guild.Id).Settings.CommandPrefix;
             
             if (!message.HasMentionPrefix(_discord.CurrentUser, ref argPos) && !message.ToString().StartsWith(prefix)) return;
 
@@ -41,15 +42,11 @@ namespace SharpBot.Command {
             var command = CommandManager.GetCommand(args[0].ToLower());
 
             if (command == null) {
-                await message.Channel.SendMessageAsync($"Oops, I could not seem to find the command {args[0]}.").ContinueWith(async msg => {
-                    await Task.Delay(3 * 1000);
-                    await msg.Result.DeleteAsync();
-                });
                 return;
             }
 
             if (command.IsGuildOnly() && rawMessage.Channel is IPrivateChannel) {
-                await message.Channel.SendMessageAsync("Sorry, this command must be performed in a guild.");
+                await MessageUtil.SendError(rawMessage.Channel, "Sorry, this command must be performed in a guild");
                 return;
             }
 
@@ -61,7 +58,7 @@ namespace SharpBot.Command {
                 if (user == null) return;
                 
                 if (!user.GuildPermissions.ToList().Contains(permission.GetValueOrDefault())) {
-                    await message.Channel.SendMessageAsync($"You must have the `{command.GetPermission()}` permission to execute this command.").ContinueWith(async msg => {
+                    await MessageUtil.SendError(rawMessage.Channel, $"You must have the `{command.GetPermission()}` permission to execute this command.").ContinueWith(async msg => {
                         await Task.Delay(5 * 1000);
                         await msg.Result.DeleteAsync();
                     });

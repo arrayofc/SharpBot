@@ -7,23 +7,23 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace SharpBot.Command.commands {
+namespace SharpBot.Command.commands.moderation {
     public class KickCommand : Command {
 
         private readonly IServiceProvider _services;
-        public KickCommand(IServiceProvider _services) : base("kick") {
+        public KickCommand(IServiceProvider _services) : base("kick", CommandType.MODERATION) {
             this._services = _services;
         }
 
         public override async Task Execute(IUser user, SocketUserMessage message, string[] args) {
             if (args.Length <= 1) {
-                await message.Channel.SendMessageAsync($"Invalid command usage. Correct usage is `{Sharp.GetCommandPrefix(message)}kick <@User> [reason]`.");
+                await MessageUtil.InvalidCommandUsage(message.Channel, this, "<@User> [reason]");
                 return;
             }
 
             var target = UserUtil.GetMemberFrom(message, args[1]);
             if (target == null) {
-                await message.Channel.SendMessageAsync($"Could not find a member with the input `{args[1]}`.");
+                await MessageUtil.SendWarning(message.Channel, $"Could not find a member with the input `{args[1]}`");
                 return;
             }
 
@@ -31,7 +31,7 @@ namespace SharpBot.Command.commands {
             if (punisher == null) return;
 
             if (target.Guild.Owner.Equals(target) || target.Hierarchy >= punisher.Hierarchy) {
-                await message.Channel.SendMessageAsync($"This members has a higher hierarchy than you, therefore you can't kick them.");
+                await MessageUtil.SendError(message.Channel, "This member has a higher hierarchy than you, therefore you can't kick them.");
                 return;
             }
 
@@ -48,17 +48,22 @@ namespace SharpBot.Command.commands {
 
             reason = reason == "" ? "Not Specified" : reason;
 
+            if (!Sharp.CheckPermissions(target.Guild, GuildPermission.KickMembers)) {
+                await MessageUtil.MissingPermissions(message.Channel, GuildPermission.KickMembers);
+                return;
+            }
+            
             await target.SendMessageAsync($"📢 You have been kicked from {punisher.Guild.Name}. Reason: `{reason}`");
 
             await target.KickAsync(reason).ContinueWith(async task => {
                 if (task.IsFaulted) {
-                    await message.Channel.SendMessageAsync("Something went wrong when kicking this user." + $" {task.Exception} {task.IsCompletedSuccessfully} {task.Id}");
+                    await MessageUtil.SendError(message.Channel, "Something went wrong when kicking this user." + $" {task.Exception} {task.IsCompletedSuccessfully} {task.Id}");
                     return;
                 }
                 
-                await message.Channel.SendMessageAsync($"📢 {target.Mention} has been kicked from the server. Reason: `{reason}.`");
-
-                var punishment = new Punishment(PunishmentType.Kick, target, punisher, reason, 0);
+                await MessageUtil.SendSuccess(message.Channel, $"{target.Mention} has successfully been kicked from the server. Reason: `{reason}.`");
+                
+                var punishment = new Punishment(PunishmentType.Kick, target, punisher, reason, -1);
                 _services.GetRequiredService<PunishmentManager>().InsertPunishment(punishment);
             });
         }

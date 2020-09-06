@@ -1,6 +1,7 @@
 ﻿using SharpBot.Database.Models;
 using System;
 using System.Runtime.Caching;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace SharpBot.Cache {
@@ -13,7 +14,7 @@ namespace SharpBot.Cache {
         /// <param name="id">The guild id.</param>
         /// <returns>The representing <c>GuildModel</c>> for said guild id.</returns>
         public static GuildModel GetGuild(ulong id) {
-            return AddOrGetExisting(id.ToString(), () => InitializeItem(id.ToString()));
+            return AddOrGetExisting(id.ToString(), () =>  InitializeItem(id.ToString()));
         }
 
         /// <summary>
@@ -41,10 +42,24 @@ namespace SharpBot.Cache {
         /// <param name="id">The guild id.</param>
         /// <returns>The fetched or created <c>GuildModel</c>.</returns>
         private static GuildModel InitializeItem(string id) {
-            var guildModel = Sharp.GetInstance().Mongo.Database.GetCollection<GuildModel>("guilds")
-                .Find(x => x.Id == ulong.Parse(id)).Limit(1).FirstOrDefault();
-            
-            return guildModel ?? new GuildModel(ulong.Parse(id));
+            var document = Sharp.GetInstance().Mongo.Database.GetCollection<BsonDocument>("guilds")
+                .Find(new BsonDocument("Id", id)).Limit(1).FirstOrDefault();
+
+            GuildModel guildModel;
+
+            if (document == null) {
+                guildModel = new GuildModel(ulong.Parse(id));
+                guildModel.Save().ContinueWith(task => {
+                    if (!task.Result.IsAcknowledged) {
+                        Console.WriteLine($"WARN: Could not save {id} to database.");
+                    }
+                });
+                
+            } else {
+                guildModel = GuildModel.FromDocument(document);
+            }
+
+            return guildModel;
         }
     }
 }

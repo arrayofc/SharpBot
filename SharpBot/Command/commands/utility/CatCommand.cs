@@ -5,13 +5,14 @@ using SharpBot.Services;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using SharpBot.Utility;
 
-namespace SharpBot.Command.commands {
+namespace SharpBot.Command.commands.utility {
     public class CatCommand : Command {
 
         private readonly ImageWebService _imageService;
 
-        public CatCommand(IServiceProvider services) : base("cat") {
+        public CatCommand(IServiceProvider services) : base("cat", CommandType.UTILITY) {
             _imageService = services.GetRequiredService<ImageWebService>();
         }
 
@@ -21,7 +22,7 @@ namespace SharpBot.Command.commands {
                 stream.Seek(0, SeekOrigin.Begin);
                 await message.Channel.SendFileAsync(stream, "cat.png");
             } else {
-                await message.Channel.SendMessageAsync("Sorry, no cat cat image was received. (error occurred)");
+                await MessageUtil.SendError(message.Channel, "Sorry, no cat image was received. (error occurred)");
             }
         }
     }

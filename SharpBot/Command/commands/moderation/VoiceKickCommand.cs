@@ -7,24 +7,24 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace SharpBot.Command.commands {
+namespace SharpBot.Command.commands.moderation {
     public class VoiceKickCommand : Command {
 
         private IServiceProvider _services;
 
-        public VoiceKickCommand(IServiceProvider _services) : base("voicekick") {
+        public VoiceKickCommand(IServiceProvider _services) : base("voicekick", CommandType.MODERATION) {
             this._services = _services;
         }
 
         public override async Task Execute(IUser user, SocketUserMessage message, string[] args) {
             if (args.Length <= 1) {
-                await message.Channel.SendMessageAsync($"Invalid command usage. Correct usage is `{Sharp.GetCommandPrefix(message)}voicekick <@User> [reason]`.");
+                await MessageUtil.InvalidCommandUsage(message.Channel, this, "<@User> [reason]");
                 return;
             }
 
             var target = UserUtil.GetMemberFrom(message: message, args[1]);
             if (target == null) {
-                await message.Channel.SendMessageAsync($"Could not find a member with the input `{args[1]}`.");
+                await MessageUtil.SendWarning(message.Channel, $"Could not find a member with the input `{args[1]}`");
                 return;
             }
 
@@ -32,12 +32,12 @@ namespace SharpBot.Command.commands {
             if (punisher == null) return;
 
             if (target.Guild.Owner.Equals(target) || target.Hierarchy >= punisher.Hierarchy) {
-                await message.Channel.SendMessageAsync($"This members has a higher hierarchy than you, therefore you can't kick them.");
+                await MessageUtil.SendError(message.Channel, "This member has a higher hierarchy than you, therefore you can't voice-kick them.");
                 return;
             }
 
             if (target.VoiceChannel == null) {
-                await message.Channel.SendMessageAsync($"This member is not currently connected to any voice channel.");
+                await MessageUtil.SendError(message.Channel, "This member is not currently connected to any voice channel.");
                 return;
             }
 
@@ -53,14 +53,19 @@ namespace SharpBot.Command.commands {
 
             var socketVoice = target.VoiceChannel;
 
+            if (!Sharp.CheckPermissions(target.Guild, GuildPermission.MoveMembers, GuildPermission.ManageChannels)) {
+                await MessageUtil.MissingPermissions(message.Channel, GuildPermission.MoveMembers, GuildPermission.ManageChannels);
+                return;
+            }
+
             var voiceChannel = await target.Guild.CreateVoiceChannelAsync("disconnect-member");
 
             await target.ModifyAsync(modify => modify.ChannelId = voiceChannel.Id).ContinueWith(x => {
                 voiceChannel.DeleteAsync().ContinueWith(async voiceChannelDeleted => {
                     await target.SendMessageAsync($"📢 You have been kicked from the voice channel {socketVoice.Name}. Reason: `{reason}`").ContinueWith(async messageTask => {
-                        await message.Channel.SendMessageAsync($"📢 {target.Mention} has been kicked from the voice channel {socketVoice.Name}. Reason: `{reason}`");
+                        await MessageUtil.SendSuccess(message.Channel, $"{target.Mention} has successfully been kicked from the voice channel 🔈 {socketVoice.Name}. Reason: `{reason}.`");
 
-                        var punishment = new Punishment(PunishmentType.Voice_Kick, target, punisher, reason, 0);
+                        var punishment = new Punishment(PunishmentType.Voice_Kick, target, punisher, reason, -1);
                         _services.GetRequiredService<PunishmentManager>().InsertPunishment(punishment);
                     });
                 });

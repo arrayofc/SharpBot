@@ -3,6 +3,7 @@ using SharpBot.Cache;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using SharpBot.Utility;
 
 namespace SharpBot.Punishments {
     public class PunishmentManager {
@@ -22,9 +23,12 @@ namespace SharpBot.Punishments {
         public static ImmutableList<Punishment> GetPunishments(ulong guildId, ulong memberId) {
             var guildModel = GuildCache.GetGuild(guildId);
 
-            return !guildModel.Punishments.Any() ? ImmutableList.Create<Punishment>() 
-                : guildModel.Punishments.Where(punishment => punishment.Punished == memberId).ToImmutableList();
+            var userModel = guildModel.GetUser(memberId);
+            
+            return !userModel.Punishments.Any() ? ImmutableList.Create<Punishment>() 
+                : userModel.Punishments.ToImmutableList();
         }
+        
 
         /// <summary>
         /// Registers and handles a new punishment.
@@ -37,7 +41,8 @@ namespace SharpBot.Punishments {
             var guildModel = GuildCache.GetGuild(guild.Id);
             if (guildModel == null) return;
 
-            guildModel.Punishments.Add(punishment);
+            var userModel = guildModel.GetUser(punishment.Punished);
+            userModel.AddPunishment(punishment);
 
             var result = await guildModel.Save();
             if (!result.IsAcknowledged) {
@@ -55,11 +60,32 @@ namespace SharpBot.Punishments {
             embed.AddField("Type", punishment.Type.ToString(), true);
             embed.AddField("Punished", punishment.GetPunished().Mention, true);
             embed.AddField("Punisher", punishment.GetPunisher().Mention, true);
-            embed.AddField("Reason", punishment.Reason, true);
-            embed.AddField("Time", DateTimeOffset.FromUnixTimeMilliseconds(punishment.PunishTime).DateTime.ToString("dddd, dd, MMMM HH:mm:ss"), true);
-            embed.AddField("Expiration", punishment.Duration == 0 ? "N/A" : DateTimeOffset.FromUnixTimeMilliseconds(punishment.ExpirationTime).DateTime.ToString("dddd, dd, MMMM HH:mm:ss"), true);
+            embed.AddField("Reason", punishment.Reason);
+            embed.AddField("Time", TimeUtil.WhenCompact(punishment.PunishTime), true);
+            embed.AddField("Expiration", punishment.Duration == -1 ? "Never" : !IsTemporaryCompatible(punishment) ? "Not Compatible" :
+                    TimeUtil.WhenCompact(punishment.ExpirationTime) + $" (in {TimeUtil.Convert(punishment.ExpirationTime)})", true);
 
             await channel.SendMessageAsync(null, false, embed.Build());
+        }
+
+        /// <summary>
+        /// Retrieves the amount of previous warnings a member has received.
+        /// </summary>
+        /// <param name="guildId">The guild to check for.</param>
+        /// <param name="memberId">The member to check for.</param>
+        /// <returns></returns>
+        public int GetWarnAmount(ulong guildId, ulong memberId) {
+            var punishments = GetPunishments(guildId, memberId);
+            return !punishments.Any() ? 0 : punishments.Count(punishment => punishment.Type == PunishmentType.Warn);
+        }
+
+        /// <summary>
+        /// Checks whether or not this punishment type can be made into a temporary punishment with
+        /// a duration and expiration time.
+        /// </summary>
+        /// <param name="punishment">The punishment to check for.</param>
+        public static bool IsTemporaryCompatible(Punishment punishment) {
+            return punishment.Type == PunishmentType.Ban || punishment.Type == PunishmentType.Mute;
         }
     }
 }
